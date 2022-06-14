@@ -1,7 +1,5 @@
-# Learning momentum (a new hyperparameter)
+# Using RMSprop or Root mean square propagation
 
-
-# Implementing  momentum
 
 from mynnfs import * # My neural network
 

@@ -1,7 +1,5 @@
-# Learning momentum (a new hyperparameter)
+# Using adagrad optimizer which means adaptive gradient
 
-
-# Implementing  momentum
 
 from mynnfs import * # My neural network
 
