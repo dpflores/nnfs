@@ -110,3 +110,7 @@ print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
 # A difference of 10% approximately is a common sign of serious overfitting from sentdex experience
 
 # The less neurons, the more probability to generalize
+
+
+# VALIDATING DATA works as a test data and is used to tune your parameters, so you dont have to retrain 
+# the full model and you dont use your test dataset.
