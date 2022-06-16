@@ -117,4 +117,4 @@ print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')
 
 # It is better to have the training data in range of 0 to 1 or -1 to 1, with the latter being preferable.
 #  This because it could avoid floating point problems since the wights wont increase as you are multiplying 
-#  by fractions or the unity.
+#  by fractions or the unity.ss
