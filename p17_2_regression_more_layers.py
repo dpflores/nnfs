@@ -38,7 +38,7 @@ activation3 = Activation_Linear()
 loss_function = Loss_MeanSquaredError()
 
 # Create Optimizer 
-optimizer = Optimizer_Adam()
+optimizer = Optimizer_Adam(learning_rate=0.005, decay=1e-3)
 
 # Accuracy precision for accuracy calculation
 # There are no really accuracy factor for regression problem,
@@ -136,3 +136,6 @@ activation3.forward(dense3.output)
 plt.plot(X_test, y_test)
 plt.plot(X_test, activation3.output)
 plt.show()
+
+# It is important to realize that changing the initial weights values could affect
+# the learning process from not learning at all, to a learning state.
