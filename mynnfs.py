@@ -218,7 +218,7 @@ class Loss_BinaryCrossentropy(Loss):
         self.dinputs = self.dinputs / samples
 
 
-# Mean Squared Losss
+# Mean Squared Error Losss
 class Loss_MeanSquaredError(Loss):  
 
     # Forward pass
@@ -243,6 +243,32 @@ class Loss_MeanSquaredError(Loss):
         # Normalize gradient
         self.dinputs = self.dinputs / samples
 
+
+# Mean Absolute Error Losss
+class Loss_MeanAbsoluteError(Loss):  
+
+    # Forward pass
+    def forward(self, y_pred, y_true):
+
+        # calculate loss
+        sample_losses = np.men(np.abs(y_true - y_pred), axis=-1)
+        # return losses
+        return sample_losses
+    
+    # Backward pass
+    def backward(self, dvalues, y_true):
+
+        # Number of samples 
+        samples = len(dvalues)
+
+        # Number of outputs in every sample
+        # We'll use the first sample to count them
+        outputs = len(dvalues[0])
+
+        # Calculate gradient
+        self.dinputs = np.sign(y_true - dvalues) / outputs
+        # Normalize gradient
+        self.dinputs = self.dinputs / samples
 
 # Softmax classifier - combined Softmax activation
 # and cross-entropy loss for faster backward step
