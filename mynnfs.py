@@ -217,6 +217,33 @@ class Loss_BinaryCrossentropy(Loss):
         # Normalize gradient
         self.dinputs = self.dinputs / samples
 
+
+# Mean Squared Losss
+class Loss_MeanSquaredError(Loss):  
+
+    # Forward pass
+    def forward(self, y_pred, y_true):
+
+        # calculate loss
+        sample_losses = np.men((y_true - y_pred)**2, axis=-1)
+        return sample_losses
+    
+    # Backward pass
+    def backward(self, dvalues, y_true):
+
+        # Number of samples 
+        samples = len(dvalues)
+
+        # Number of outputs in every sample
+        # We'll use the first sample to count them
+        outputs = len(dvalues[0])
+
+        # Calculate gradient
+        self.dinputs = -2 * (y_true - dvalues) / outputs
+        # Normalize gradient
+        self.dinputs = self.dinputs / samples
+
+
 # Softmax classifier - combined Softmax activation
 # and cross-entropy loss for faster backward step
 class Activation_Softmax_Loss_CategoricalCrossentropy():
@@ -252,6 +279,20 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
         # Normalize the gradient
         self.dinputs = self.dinputs / samples
 
+
+# Linear activation f(x) = x
+class Activation_Linear:
+
+    # Forward pass
+    def forward(self, inputs):
+        # Just remember values
+        self.inputs = inputs
+        self.outpu = inputs
+    
+    # Backward pass
+    def backward(self, dvalues):
+        #derivative is 1, 1*dvalues = dvalues - the chain rule
+        self.dinputs = dvalues.copy()
 
 class Optimizer_SGD:
 
