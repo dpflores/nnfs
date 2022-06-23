@@ -225,7 +225,7 @@ class Loss_MeanSquaredError(Loss):
     def forward(self, y_pred, y_true):
 
         # calculate loss
-        sample_losses = np.men((y_true - y_pred)**2, axis=-1)
+        sample_losses = np.mean((y_true - y_pred)**2, axis=-1)
         return sample_losses
     
     # Backward pass
@@ -251,7 +251,7 @@ class Loss_MeanAbsoluteError(Loss):
     def forward(self, y_pred, y_true):
 
         # calculate loss
-        sample_losses = np.men(np.abs(y_true - y_pred), axis=-1)
+        sample_losses = np.mean(np.abs(y_true - y_pred), axis=-1)
         # return losses
         return sample_losses
     
@@ -313,7 +313,7 @@ class Activation_Linear:
     def forward(self, inputs):
         # Just remember values
         self.inputs = inputs
-        self.outpu = inputs
+        self.output = inputs
     
     # Backward pass
     def backward(self, dvalues):
