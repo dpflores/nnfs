@@ -3,7 +3,7 @@ from random import sample
 import numpy as np
 
 
-# OOP
+#  LAYERS 
 class Layer_Dense:
     def __init__(self, n_inputs, n_neurons, weight_regularizer_l1=0, weight_regularizer_l2=0, 
                 bias_regularizer_l1=0, bias_regularizer_l2=0):
@@ -75,7 +75,7 @@ class Layer_Dropout:
         self.dinputs = dvalues * self.binary_mask
 
 
-# Activation
+# ACTIVATION FUNCTIONS
 class Activation_ReLU: # This is impotant dou to the non linearity
     # Forward pass
     def forward(self, inputs):
@@ -110,6 +110,43 @@ class Activation_Softmax: # Important for the output layer
             # and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
 
+
+# Softmax classifier - combined Softmax activation
+# and cross-entropy loss for faster backward step
+class Activation_Softmax_Loss_CategoricalCrossentropy():
+
+    # Creating activation and loss function objects
+    def __init__(self):
+        self.activation = Activation_Softmax()
+        self.loss = Loss_CategoricalCrossentropy()
+
+    # Forward pass
+    def forward(self, inputs, y_true):
+        # Output layer's activation function
+        self.activation.forward(inputs)
+        # Set the output
+        self.output = self.activation.output
+        # Calculate and return loss
+        return self.loss.calculate(self.output, y_true)
+
+    # Backward pass
+    def backward(self, dvalues, y_true):  #d_values is the y_predicted
+        # Number of samples (i)
+        samples = len(dvalues)
+
+        # If labels are one-hot encoded.
+        # turn them into discrete values or sparse labels
+        if len(y_true.shape) == 2:
+            y_true = np.argmax(y_true, axis = 1) # good way to convert the array to an index
+
+        # We copy, so we can safely modify
+        self.dinputs = dvalues.copy()
+        # Calculate gradient
+        self.dinputs[range(samples), y_true] -= 1  # This acts as the subtraction since the value we always subtract is 1
+        # Normalize the gradient
+        self.dinputs = self.dinputs / samples
+
+
 # Sigmoid activation for binary logistic regression
 class Activation_Sigmoid:
     # Forward pass
@@ -122,6 +159,23 @@ class Activation_Sigmoid:
         # Derivative calculated from the output of the sigmoid function
         self.dinputs = dvalues * self.output * (1 - self.output)
 
+
+# Linear activation f(x) = x for regression
+class Activation_Linear:
+
+    # Forward pass
+    def forward(self, inputs):
+        # Just remember values
+        self.inputs = inputs
+        self.output = inputs
+    
+    # Backward pass
+    def backward(self, dvalues):
+        #derivative is 1, 1*dvalues = dvalues - the chain rule
+        self.dinputs = dvalues.copy()
+
+
+# LOSS 
 class Loss:
     def calculate(self, output, y):
         sample_losses = self.forward(output, y)
@@ -270,56 +324,8 @@ class Loss_MeanAbsoluteError(Loss):
         # Normalize gradient
         self.dinputs = self.dinputs / samples
 
-# Softmax classifier - combined Softmax activation
-# and cross-entropy loss for faster backward step
-class Activation_Softmax_Loss_CategoricalCrossentropy():
 
-    # Creating activation and loss function objects
-    def __init__(self):
-        self.activation = Activation_Softmax()
-        self.loss = Loss_CategoricalCrossentropy()
-
-    # Forward pass
-    def forward(self, inputs, y_true):
-        # Output layer's activation function
-        self.activation.forward(inputs)
-        # Set the output
-        self.output = self.activation.output
-        # Calculate and return loss
-        return self.loss.calculate(self.output, y_true)
-
-    # Backward pass
-    def backward(self, dvalues, y_true):  #d_values is the y_predicted
-        # Number of samples (i)
-        samples = len(dvalues)
-
-        # If labels are one-hot encoded.
-        # turn them into discrete values or sparse labels
-        if len(y_true.shape) == 2:
-            y_true = np.argmax(y_true, axis = 1) # good way to convert the array to an index
-
-        # We copy, so we can safely modify
-        self.dinputs = dvalues.copy()
-        # Calculate gradient
-        self.dinputs[range(samples), y_true] -= 1  # This acts as the subtraction since the value we always subtract is 1
-        # Normalize the gradient
-        self.dinputs = self.dinputs / samples
-
-
-# Linear activation f(x) = x
-class Activation_Linear:
-
-    # Forward pass
-    def forward(self, inputs):
-        # Just remember values
-        self.inputs = inputs
-        self.output = inputs
-    
-    # Backward pass
-    def backward(self, dvalues):
-        #derivative is 1, 1*dvalues = dvalues - the chain rule
-        self.dinputs = dvalues.copy()
-
+# OPTMIZERS
 class Optimizer_SGD:
 
     # Initialize optimizer - set settings,
@@ -513,3 +519,14 @@ class Optimizer_Adam:
     # Call once after any parameter updates
     def post_update_params(self):
         self.iterations += 1
+
+
+# Model class
+class Model:
+
+    def __init__(self):
+        self.layers = []
+
+    # Add objects to the model
+    def add(self, layer):
+        self.layers.append(layer)
