@@ -1,4 +1,6 @@
 #from matplotlib.font_manager import _Weight
+from doctest import OutputChecker
+from random import sample
 import numpy as np
 
 
@@ -109,6 +111,18 @@ class Activation_Softmax: # Important for the output layer
             # and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
 
+# Sigmoid activation for binary logistic regression
+class Activation_Sigmoid:
+
+    # Forward pass
+    def forward(self, inputs):
+        # Sigmoid function
+        self.inputs = inputs
+        self.outputs = 1 / (1 + np.exp(-inputs))
+    
+    def backward(self, dvalues):
+        # Derivative calculated from the output of the sigmoid function
+        self.dinputs = dvalues * self.outputs * (1 - self.outputs)
 
 class Loss:
     def calculate(self, output, y):
@@ -172,6 +186,38 @@ class Loss_CategoricalCrossentropy(Loss): #Inherited from the Loss Class
         # Normalize gradient (due to a number of samples)
         self.dinputs = self.dinputs / samples
 
+# Binary cross-entropy loss
+class Loss_BinaryCrossentropy(Loss):
+
+    # Forward pass
+    def forward(self, y_pred, y_true):
+
+        # clip datato prevent division by 0
+        # clip both sides to not drag mean towards any value
+        y_predd_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        # Calculate sample-wise loss
+        sample_losses = -(y_true * np.log(y_predd_clipped) + (1 - y_true) * np.log(1 - y_predd_clipped))
+        sample_losses = np.mean(sample_losses, axis=-1)
+
+        # Return losses
+        return sample_losses
+    
+    # Backward pass
+    def backward(self, dvalues, y_true):
+
+        # Number of samples
+        samples = len(dvalues)
+        # Number of outputs in every sample
+        # We'll use the first sample to count them
+        outputs = len(dvalues[0])
+        clipped_dvalues = np.clip(dvalues, 1e-7, 1 - 1e-7)
+
+        # Calculate gradient
+        self.dinputs = -(y_true/clipped_dvalues - (1 - y_true) / clipped_dvalues) / outputs
+
+        # Normalize gradiente
+        self.dinputs = self.dinputs / samples
 
 # Softmax classifier - combined Softmax activation
 # and cross-entropy loss for faster backward step
