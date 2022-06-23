@@ -81,7 +81,7 @@ for epoch in range(10001):
     # Calculate regularization penalty
     regularization_loss = loss_function.regularization_loss(dense1) + \
                           loss_function.regularization_loss(dense2) + \
-                          loss_function.regularization_loss(dense2)
+                          loss_function.regularization_loss(dense3)
 
     # Calculate overall loss
     loss = data_loss + regularization_loss
@@ -107,10 +107,6 @@ for epoch in range(10001):
     activation3.backward(loss_function.dinputs)
     dense3.backward(activation3.dinputs)
     activation2.backward(dense3.dinputs)
-    dense2.backward(activation2.dinputs)
-    activation1.backward(dense2.dinputs)
-    dense1.backward(activation1.dinputs)
-
     dense2.backward(activation2.dinputs)
     activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
