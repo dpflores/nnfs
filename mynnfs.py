@@ -113,12 +113,11 @@ class Activation_Softmax: # Important for the output layer
 
 # Sigmoid activation for binary logistic regression
 class Activation_Sigmoid:
-
     # Forward pass
     def forward(self, inputs):
         # Sigmoid function
         self.inputs = inputs
-        self.outputs = 1 / (1 + np.exp(-inputs))
+        self.output = 1 / (1 + np.exp(-inputs))
     
     def backward(self, dvalues):
         # Derivative calculated from the output of the sigmoid function
