@@ -3,9 +3,6 @@
 # represents two classes, 0 for one of the classes, and 1 for the other.
 # This couldbe like cat vs dog or cat vs not cat
 
-
-from pickletools import optimize
-from xml.etree.ElementPath import prepare_descendant
 from mynnfs import * # My neural network
 
 from mydatasets import spiral_data
@@ -71,7 +68,7 @@ for epoch in range(10001):
     # Part in the brackets returns a binary mask - array consisting
     # of True/false values, multiplying it by 1 changes it into arrays of 1s and 0s
 
-    predictions = (activation2.output>0.5)*1
+    predictions = (activation2.output > 0.5) * 1
     accuracy = np.mean(predictions==y)
 
     if not epoch % 100:
@@ -84,9 +81,9 @@ for epoch in range(10001):
 
     # Backward pass
     loss_function.backward(activation2.output, y)
-    dense2.backward(loss_function.dinputs)
+    activation2.backward(loss_function.dinputs)
     dense2.backward(activation2.dinputs)
-    activation1.backward(dense1.dinputs)
+    activation1.backward(dense2.dinputs)
     dense1.backward(activation1.dinputs)
 
 
@@ -97,4 +94,36 @@ for epoch in range(10001):
     optimizer.post_update_params()
 
 
+# Validate the model 
 
+# Create test dataset
+X_test, y_test = spiral_data(samples=100, classes=2)
+
+# Reshape labels since they are not sparse anymore
+# list of lists that contain one output (0 or 1)
+# per output neuron, 1 neuron in this case
+y = y.reshape(-1, 1)
+
+# Forward pass
+# Perform a forward pass of our training data through this layer
+dense1.forward(X_test)
+
+# Perform a forward pass through activation function
+# takes the output of first dense layer here
+activation1.forward(dense1.output)
+
+# Perform a forward pass through second Dense layer
+# takes outputs of activation function of first layer as inputs
+dense2.forward(activation1.output)
+
+# Perform forward pass through activation function
+# takes the output of second layer here
+activation2.forward(dense2.output)
+
+# calculate data loss 
+loss = loss_function.calculate(activation2.output, y_test)
+
+predictions = (activation2.output>0.5)*1
+accuracy = np.mean(predictions==y)
+
+print(f'validation, acc: {accuracy:.3f}, loss: {loss:.3f}')

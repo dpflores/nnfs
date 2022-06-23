@@ -1,5 +1,4 @@
-#from matplotlib.font_manager import _Weight
-from doctest import OutputChecker
+
 from random import sample
 import numpy as np
 
@@ -121,7 +120,7 @@ class Activation_Sigmoid:
     
     def backward(self, dvalues):
         # Derivative calculated from the output of the sigmoid function
-        self.dinputs = dvalues * self.outputs * (1 - self.outputs)
+        self.dinputs = dvalues * self.output * (1 - self.output)
 
 class Loss:
     def calculate(self, output, y):
@@ -213,9 +212,9 @@ class Loss_BinaryCrossentropy(Loss):
         clipped_dvalues = np.clip(dvalues, 1e-7, 1 - 1e-7)
 
         # Calculate gradient
-        self.dinputs = -(y_true/clipped_dvalues - (1 - y_true) / clipped_dvalues) / outputs
+        self.dinputs = -(y_true / clipped_dvalues - (1 - y_true) / (1 - clipped_dvalues)) / outputs
 
-        # Normalize gradiente
+        # Normalize gradient
         self.dinputs = self.dinputs / samples
 
 # Softmax classifier - combined Softmax activation

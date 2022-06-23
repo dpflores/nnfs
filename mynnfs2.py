@@ -1,14 +1,21 @@
+from random import sample
 import numpy as np
-
 
 # Dense layer
 class Layer_Dense:
 
     # Layer initialization
-    def __init__(self, n_inputs, n_neurons):
+    def __init__(self, n_inputs, n_neurons,
+                 weight_regularizer_l1=0, weight_regularizer_l2=0,
+                 bias_regularizer_l1=0, bias_regularizer_l2=0):
         # Initialize weights and biases
         self.weights = 0.01 * np.random.randn(n_inputs, n_neurons)
         self.biases = np.zeros((1, n_neurons))
+        # Set regularization strength
+        self.weight_regularizer_l1 = weight_regularizer_l1
+        self.weight_regularizer_l2 = weight_regularizer_l2
+        self.bias_regularizer_l1 = bias_regularizer_l1
+        self.bias_regularizer_l2 = bias_regularizer_l2
 
     # Forward pass
     def forward(self, inputs):
@@ -22,8 +29,55 @@ class Layer_Dense:
         # Gradients on parameters
         self.dweights = np.dot(self.inputs.T, dvalues)
         self.dbiases = np.sum(dvalues, axis=0, keepdims=True)
+
+
+        # Gradients on regularization
+        # L1 on weights
+        if self.weight_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.weights)
+            dL1[self.weights < 0] = -1
+            self.dweights += self.weight_regularizer_l1 * dL1
+        # L2 on weights
+        if self.weight_regularizer_l2 > 0:
+            self.dweights += 2 * self.weight_regularizer_l2 * \
+                             self.weights
+        # L1 on biases
+        if self.bias_regularizer_l1 > 0:
+            dL1 = np.ones_like(self.biases)
+            dL1[self.biases < 0] = -1
+            self.dbiases += self.bias_regularizer_l1 * dL1
+        # L2 on biases
+        if self.bias_regularizer_l2 > 0:
+            self.dbiases += 2 * self.bias_regularizer_l2 * \
+                            self.biases
+
         # Gradient on values
         self.dinputs = np.dot(dvalues, self.weights.T)
+
+
+# Dropout
+class Layer_Dropout:
+
+    # Init
+    def __init__(self, rate):
+        # Store rate, we invert it as for example for dropout
+        # of 0.1 we need success rate of 0.9
+        self.rate = 1 - rate
+
+    # Forward pass
+    def forward(self, inputs):
+        # Save input values
+        self.inputs = inputs
+        # Generate and save scaled mask
+        self.binary_mask = np.random.binomial(1, self.rate,
+                           size=inputs.shape) / self.rate
+        # Apply mask to output values
+        self.output = inputs * self.binary_mask
+
+    # Backward pass
+    def backward(self, dvalues):
+        # Gradient on values
+        self.dinputs = dvalues * self.binary_mask
 
 
 # ReLU activation
@@ -44,7 +98,6 @@ class Activation_ReLU:
 
         # Zero gradient where input values were negative
         self.dinputs[self.inputs <= 0] = 0
-
 
 
 # Softmax activation
@@ -75,6 +128,7 @@ class Activation_Softmax:
                 enumerate(zip(self.output, dvalues)):
             # Flatten output array
             single_output = single_output.reshape(-1, 1)
+
             # Calculate Jacobian matrix of the output
             jacobian_matrix = np.diagflat(single_output) - \
                               np.dot(single_output, single_output.T)
@@ -82,6 +136,22 @@ class Activation_Softmax:
             # and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix,
                                          single_dvalues)
+
+
+# Sigmoid activation
+class Activation_Sigmoid:
+
+    # Forward pass
+    def forward(self, inputs):
+        # Save input and calculate/save output
+        # of the sigmoid function
+        self.inputs = inputs
+        self.output = 1 / (1 + np.exp(-inputs))
+
+    # Backward pass
+    def backward(self, dvalues):
+        # Derivative - calculates from output of the sigmoid function
+        self.dinputs = dvalues * (1 - self.output) * self.output
 
 
 # SGD optimizer
@@ -101,6 +171,7 @@ class Optimizer_SGD:
         if self.decay:
             self.current_learning_rate = self.learning_rate * \
                 (1. / (1. + self.decay * self.iterations))
+
 
     # Update parameters
     def update_params(self, layer):
@@ -142,10 +213,10 @@ class Optimizer_SGD:
         layer.weights += weight_updates
         layer.biases += bias_updates
 
-
     # Call once after any parameter updates
     def post_update_params(self):
         self.iterations += 1
+
 
 
 # Adagrad optimizer
@@ -190,6 +261,7 @@ class Optimizer_Adagrad:
     # Call once after any parameter updates
     def post_update_params(self):
         self.iterations += 1
+
 
 
 # RMSprop optimizer
@@ -289,7 +361,6 @@ class Optimizer_Adam:
         # Update cache with squared current gradients
         layer.weight_cache = self.beta_2 * layer.weight_cache + \
             (1 - self.beta_2) * layer.dweights**2
-
         layer.bias_cache = self.beta_2 * layer.bias_cache + \
             (1 - self.beta_2) * layer.dbiases**2
         # Get corrected cache
@@ -317,6 +388,38 @@ class Optimizer_Adam:
 # Common loss class
 class Loss:
 
+    # Regularization loss calculation
+    def regularization_loss(self, layer):
+
+        # 0 by default
+        regularization_loss = 0
+
+        # L1 regularization - weights
+        # calculate only when factor greater than 0
+        if layer.weight_regularizer_l1 > 0:
+            regularization_loss += layer.weight_regularizer_l1 * \
+                                   np.sum(np.abs(layer.weights))
+
+        # L2 regularization - weights
+        if layer.weight_regularizer_l2 > 0:
+            regularization_loss += layer.weight_regularizer_l2 * \
+                                   np.sum(layer.weights *
+                                          layer.weights)
+
+        # L1 regularization - biases
+        # calculate only when factor greater than 0
+        if layer.bias_regularizer_l1 > 0:
+            regularization_loss += layer.bias_regularizer_l1 * \
+                                   np.sum(np.abs(layer.biases))
+
+        # L2 regularization - biases
+        if layer.bias_regularizer_l2 > 0:
+            regularization_loss += layer.bias_regularizer_l2 * \
+                                   np.sum(layer.biases *
+                                          layer.biases)
+
+        return regularization_loss
+
     # Calculates the data and regularization losses
     # given model output and ground truth values
     def calculate(self, output, y):
@@ -339,6 +442,7 @@ class Loss_CategoricalCrossentropy(Loss):
 
         # Number of samples in a batch
         samples = len(y_pred)
+
         # Clip data to prevent division by 0
         # Clip both sides to not drag mean towards any value
         y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
@@ -357,7 +461,6 @@ class Loss_CategoricalCrossentropy(Loss):
                 y_pred_clipped * y_true,
                 axis=1
             )
-
         # Losses
         negative_log_likelihoods = -np.log(correct_confidences)
         return negative_log_likelihoods
@@ -379,7 +482,6 @@ class Loss_CategoricalCrossentropy(Loss):
         self.dinputs = -y_true / dvalues
         # Normalize gradient
         self.dinputs = self.dinputs / samples
-
 
 
 # Softmax classifier - combined Softmax activation
@@ -406,6 +508,7 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
         # Number of samples
         samples = len(dvalues)
 
+
         # If labels are one-hot encoded,
         # turn them into discrete values
         if len(y_true.shape) == 2:
@@ -415,5 +518,43 @@ class Activation_Softmax_Loss_CategoricalCrossentropy():
         self.dinputs = dvalues.copy()
         # Calculate gradient
         self.dinputs[range(samples), y_true] -= 1
+        # Normalize gradient
+        self.dinputs = self.dinputs / samples
+
+
+# Binary cross-entropy loss
+class Loss_BinaryCrossentropy(Loss):
+
+    # Forward pass
+    def forward(self, y_pred, y_true):
+
+        # Clip data to prevent division by 0
+        # Clip both sides to not drag mean towards any value
+        y_pred_clipped = np.clip(y_pred, 1e-7, 1 - 1e-7)
+
+        # Calculate sample-wise loss
+        sample_losses = -(y_true * np.log(y_pred_clipped) +
+                          (1 - y_true) * np.log(1 - y_pred_clipped))
+        sample_losses = np.mean(sample_losses, axis=-1)
+
+        # Return losses
+        return sample_losses
+
+    # Backward pass
+    def backward(self, dvalues, y_true):
+
+        # Number of samples
+        samples = len(dvalues)
+        # Number of outputs in every sample
+        # We'll use the first sample to count them
+        outputs = len(dvalues[0])
+
+        # Clip data to prevent division by 0
+        # Clip both sides to not drag mean towards any value
+        clipped_dvalues = np.clip(dvalues, 1e-7, 1 - 1e-7)
+
+        # Calculate gradient
+        self.dinputs = -(y_true / clipped_dvalues -
+                         (1 - y_true) / (1 - clipped_dvalues)) / outputs
         # Normalize gradient
         self.dinputs = self.dinputs / samples
