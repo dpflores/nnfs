@@ -31,7 +31,7 @@ model.add(Activation_Sigmoid())
 
 # Set loss and optimizer
 model.set(loss=Loss_BinaryCrossentropy(), 
-        optimizer=Optimizer_Adam(learning_rate=0.001,  decay=5e-5),
+        optimizer=Optimizer_Adam(learning_rate=0.001,  decay=5e-7),
         accuracy=Accuracy_Categorical())
 
 # Finalize the model
