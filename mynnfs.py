@@ -1,6 +1,7 @@
 
 from random import sample
 from turtle import forward
+from xml.etree.ElementInclude import include
 import numpy as np
 
 
@@ -9,7 +10,7 @@ class Layer_Dense:
     def __init__(self, n_inputs, n_neurons, weight_regularizer_l1=0, weight_regularizer_l2=0, 
                 bias_regularizer_l1=0, bias_regularizer_l2=0):
         # Initialize weights and biases 
-        self.weights = 0.1 * np.random.randn(n_inputs, n_neurons)
+        self.weights = 0.01 * np.random.randn(n_inputs, n_neurons)
         self.biases = np.zeros((1, n_neurons))
         # Set regularization strength
         self.weight_regularizer_l1 = weight_regularizer_l1
@@ -240,7 +241,7 @@ class Loss:
 
     # Calculate the data and regularization losses 
     # given model output and ground truth values
-    def calculate(self, output, y):
+    def calculate(self, output, y, *, include_regularization=False):
         
         # Calculate sample losses
         sample_losses = self.forward(output, y)
@@ -248,6 +249,10 @@ class Loss:
         # Calculate mean loss
         data_loss = np.mean(sample_losses) # Gets the mean of all the losses for each sample
         
+        # If just data loss - return it (this is important when working with just validation data)
+        if not include_regularization:
+            return data_loss
+
         # Return the data and regularization loss
         return data_loss, self.regularization_loss()
     
@@ -636,7 +641,7 @@ class Model:
         )
 
     # Train the model
-    def train(self, X, y, *, epochs=1, print_every=1):
+    def train(self, X, y, *, epochs=1, print_every=1, validation_data=None):
 
         # Initialize accuracy object
         self.accuracy.init(y)
@@ -648,7 +653,7 @@ class Model:
             output = self.forward(X)
             
             # Calculate loss
-            data_loss, regularization_loss = self.loss.calculate(output, y)
+            data_loss, regularization_loss = self.loss.calculate(output, y, include_regularization=True)
             loss = data_loss + regularization_loss
 
             # Get predictions
@@ -674,6 +679,27 @@ class Model:
                         f'reg_loss: {regularization_loss:.3f}), ' +
                         f'lr: {self.optimizer.current_learning_rate}')
             
+        # If there is validation data
+        if validation_data is not None:
+
+            # For better readability
+            X_val, y_val = validation_data
+
+            # Perform forward pass
+            output = self.forward(X_val)
+
+            # Calculate the loss
+            loss = self.loss.calculate(output, y_val)
+
+            # Get predictions and calculate accuracy 
+            predictions = self.ouput_layer_activation.predictions(output)
+
+            accuracy = self.accuracy.calculate(predictions, y_val)
+            
+            # Print a summary
+            print(f'validation, ' +
+                f'acc: {accuracy:.3f}, ' + 
+                f'loss: {loss:.3f}')
           
 
     # Perform forward pass
@@ -740,3 +766,17 @@ class Accuracy_Regression(Accuracy):
     # Compares predictions to the ground truth tables
     def compare(self, predicitions, y):
         return np.absolute(predicitions - y) < self.precision
+
+
+# Accuracy calculation for classification model 
+class Accuracy_Categorical(Accuracy):
+
+    # No initialization is needed
+    def init(self, y):
+        pass
+
+    # Compares predictions to the ground truth values 
+    def compare(self, predictions, y):
+        if len(y.shape) == 2:
+            y = np.argmax(y, axis=1)
+        return predictions == y
