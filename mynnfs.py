@@ -99,6 +99,10 @@ class Activation_ReLU: # This is impotant dou to the non linearity
     def backward(self, dvalues):
         self.dinputs = dvalues.copy()
         self.dinputs[self.inputs <= 0] = 0
+    
+    # Calculate predctions for outputs
+    def predictions(self, outputs):
+        return outputs
 
 
 class Activation_Softmax: # Important for the output layer
@@ -122,6 +126,9 @@ class Activation_Softmax: # Important for the output layer
             # and add it to the array of sample gradients
             self.dinputs[index] = np.dot(jacobian_matrix, single_dvalues)
 
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return np.argmax(outputs, axis=1)
 
 # Softmax classifier - combined Softmax activation
 # and cross-entropy loss for faster backward step
@@ -167,9 +174,14 @@ class Activation_Sigmoid:
         self.inputs = inputs
         self.output = 1 / (1 + np.exp(-inputs))
     
+    # Backward pass
     def backward(self, dvalues):
         # Derivative calculated from the output of the sigmoid function
         self.dinputs = dvalues * self.output * (1 - self.output)
+    
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return (outputs > 0.5) * 1
 
 
 # Linear activation f(x) = x for regression
@@ -186,10 +198,42 @@ class Activation_Linear:
         #derivative is 1, 1*dvalues = dvalues - the chain rule
         self.dinputs = dvalues.copy()
 
+    # Calculate predictions for outputs
+    def predictions(self, outputs):
+        return outputs
 
 # LOSS 
 class Loss:
 
+    # Regularization loss calculation
+    def regularization_loss(self):
+
+        # 0 by default
+        regularization_loss = 0
+
+        # Calculate regularization loss
+        # iterate all trainable layers
+        for layer in self.trainable_layers:
+
+            # L1 regularization
+            # calculate only when factor greater than 0
+            if layer.weight_regularizer_l1 > 0:
+                regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
+
+            # L2 regularization - weights
+            if layer.weight_regularizer_l2 > 0:
+                regularization_loss += layer.weight_regularizer_l2 * np.sum(np.abs(layer.weights*layer.weights))
+            
+            # L1 regularization - biases
+            if layer.bias_regularizer_l1 > 0:
+                regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.bias))
+            
+            # L2 regularization - biases
+            if layer.bias_regularizer_l2 > 0:
+                regularization_loss += layer.bias_regularizer_l2 * np.sum(np.abs(layer.biases*layer.biases))
+
+        return regularization_loss
+    
     # Set/remember trainable layers
     def remember_trainable_layers(self, trainable_layers):
         self.trainable_layers = trainable_layers
@@ -205,32 +249,8 @@ class Loss:
         data_loss = np.mean(sample_losses) # Gets the mean of all the losses for each sample
         
         # Return the data and regularization loss
-        return data_loss, self.regularization_loss
-
-    # Regularization loss calculation
-    def regularization_loss(self, layer):
-
-        # 0 by default
-        regularization_loss = 0
-
-        # L1 regularization
-        # calculate only when factor greater than 0
-        if layer.weight_regularizer_l1 > 0:
-            regularization_loss += layer.weight_regularizer_l1 * np.sum(np.abs(layer.weights))
-
-        # L2 regularization - weights
-        if layer.weight_regularizer_l2 > 0:
-            regularization_loss += layer.weight_regularizer_l2 * np.sum(np.abs(layer.weights*layer.weights))
-        
-        # L1 regularization - biases
-        if layer.bias_regularizer_l1 > 0:
-            regularization_loss += layer.bias_regularizer_l1 * np.sum(np.abs(layer.bias))
-        
-        # L2 regularization - biases
-        if layer.bias_regularizer_l2 > 0:
-            regularization_loss += layer.bias_regularizer_l2 * np.sum(np.abs(layer.biases*layer.biases))
-
-        return regularization_loss
+        return data_loss, self.regularization_loss()
+    
 
 class Loss_CategoricalCrossentropy(Loss): #Inherited from the Loss Class
     # Forward pass
@@ -546,6 +566,9 @@ class Optimizer_Adam:
         self.iterations += 1
 
 
+
+
+
 # Model class
 class Model:
 
@@ -557,9 +580,10 @@ class Model:
         self.layers.append(layer)
 
     # Set loss and optimizer
-    def set(self, *, loss, optimizer):
+    def set(self, *, loss, optimizer, accuracy):
         self.loss = loss
         self.optimizer = optimizer
+        self.accuracy = accuracy
     # The use of the asterisk in the parameter definitions notes that the subsequent parameters ( loss
     # and optimizer in this case) are keyword arguments. Since they have no default value assigned,
     # they are required keyword arguments, which means that they have to be passed by names and
@@ -573,6 +597,9 @@ class Model:
 
         # Count all the objects
         layer_count = len(self.layers)
+
+        # Initialize a list of trainable layers
+        self.trainable_layers = []
 
         # Iterate the objects
         for i in range(layer_count):
@@ -592,6 +619,7 @@ class Model:
             else:
                 self.layers[i].prev = self.layers[i-1]
                 self.layers[i].next = self.loss
+                self.ouput_layer_activation = self.layers[i]
 
             # If layer contains an attribute called "weights,"
             # it's a trainable layer -
@@ -600,9 +628,18 @@ class Model:
             # checking for weights is enough
             if hasattr(self.layers[i], 'weights'):
                 self.trainable_layers.append(self.layers[i])
+        
+
+        # Update loss objects with trainable layers
+        self.loss.remember_trainable_layers(
+            self.trainable_layers
+        )
 
     # Train the model
     def train(self, X, y, *, epochs=1, print_every=1):
+
+        # Initialize accuracy object
+        self.accuracy.init(y)
 
         # Main training loop 
         for epoch in range(1, epochs+1):
@@ -610,9 +647,33 @@ class Model:
             # Perform forward pass
             output = self.forward(X)
             
-            # Temporary
-            print(output)
-            exit()
+            # Calculate loss
+            data_loss, regularization_loss = self.loss.calculate(output, y)
+            loss = data_loss + regularization_loss
+
+            # Get predictions
+            predictions = self.ouput_layer_activation.predictions(output)
+
+            accuracy = self.accuracy.calculate(predictions, y)
+
+            # Perform backward pass
+            self.backward(output, y)
+
+            # Optimize (update parameters)
+            self.optimizer.pre_update_params()
+            for layer in self.trainable_layers:
+                self.optimizer.update_params(layer)
+            self.optimizer.post_update_params()
+
+            # Print a summary 
+            if not epoch % print_every:
+                print(f'epoch: {epoch}, ' +
+                        f'acc: {accuracy:.3f}, ' +
+                        f'loss: {loss:.3f}, (' +
+                        f'data_loss: {data_loss:.3f}, ' +
+                        f'reg_loss: {regularization_loss:.3f}), ' +
+                        f'lr: {self.optimizer.current_learning_rate}')
+            
           
 
     # Perform forward pass
@@ -631,3 +692,51 @@ class Model:
         # "layer" is now the last object from the list,
         # return its output
         return layer.output
+    
+    # Performs backward pass
+    def backward(self, ouput, y):
+
+        # First call backward method on the loss
+        # this will set dinputs property that the last
+        # layer will try to access shortly
+        self.loss.backward(ouput, y)
+
+        # Call backward method going through all the objects
+        # in reversed order passing dinputs as a parameter
+        for layer in reversed(self.layers):
+            layer.backward(layer.next.dinputs)
+
+
+# Common accuracy class
+class Accuracy:
+
+    # Calculates an accuracy
+    # given predictions and ground truth values
+    def calculate(self, predictions, y):
+
+        # Get comparison results 
+        comparisons = self.compare(predictions, y)
+
+        # Calculate an accuracy
+        accuracy = np.mean(comparisons)
+
+        # Return accuracy
+        return accuracy
+
+# Accuracy calculation for regresion model
+class Accuracy_Regression(Accuracy):
+
+    def __init__(self):
+        
+        # Create precision property
+        self.precision = None
+
+    # Calculates precision value
+    # based on passed in ground truth
+    def init(self, y, reinit=False):
+        if self.precision is None or reinit:
+            self.precision = np.std(y) / 250
+    
+    # Compares predictions to the ground truth tables
+    def compare(self, predicitions, y):
+        return np.absolute(predicitions - y) < self.precision
