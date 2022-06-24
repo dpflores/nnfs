@@ -1,5 +1,6 @@
 
 from random import sample
+from turtle import forward
 import numpy as np
 
 
@@ -73,6 +74,17 @@ class Layer_Dropout:
     def backward(self, dvalues):
         # Gradient on values
         self.dinputs = dvalues * self.binary_mask
+
+
+# Input "layer"
+# The input layer only contains the training data, 
+# and we’ll only use it as a “previous” layer to the first layer during
+# the iteration of the layers in a loop
+class Layer_Input:
+
+    # Forward pass
+    def forward(self, inputs):
+        self.output = inputs
 
 
 # ACTIVATION FUNCTIONS
@@ -177,10 +189,23 @@ class Activation_Linear:
 
 # LOSS 
 class Loss:
+
+    # Set/remember trainable layers
+    def remember_trainable_layers(self, trainable_layers):
+        self.trainable_layers = trainable_layers
+
+    # Calculate the data and regularization losses 
+    # given model output and ground truth values
     def calculate(self, output, y):
+        
+        # Calculate sample losses
         sample_losses = self.forward(output, y)
+
+        # Calculate mean loss
         data_loss = np.mean(sample_losses) # Gets the mean of all the losses for each sample
-        return data_loss
+        
+        # Return the data and regularization loss
+        return data_loss, self.regularization_loss
 
     # Regularization loss calculation
     def regularization_loss(self, layer):
@@ -527,6 +552,82 @@ class Model:
     def __init__(self):
         self.layers = []
 
-    # Add objects to the model
+    # Add objects to the model (layers and activation functions)
     def add(self, layer):
         self.layers.append(layer)
+
+    # Set loss and optimizer
+    def set(self, *, loss, optimizer):
+        self.loss = loss
+        self.optimizer = optimizer
+    # The use of the asterisk in the parameter definitions notes that the subsequent parameters ( loss
+    # and optimizer in this case) are keyword arguments. Since they have no default value assigned,
+    # they are required keyword arguments, which means that they have to be passed by names and
+    # values, making code more legible.
+
+    # Fnialize the model
+    def finalize(self):
+
+        # Create and set the input layer
+        self.input_layer = Layer_Input()
+
+        # Count all the objects
+        layer_count = len(self.layers)
+
+        # Iterate the objects
+        for i in range(layer_count):
+
+            # If it's the first layer,
+            # the previous layer object is the input layer
+            if i == 0:
+                self.layers[i].prev = self.input_layer
+                self.layers[i].next = self.layers[i+1]
+            
+            # All layers except for the first and the last
+            elif i < layer_count - 1:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.layers[i+1]
+            
+            # The last layer - the next object is the loss
+            else:
+                self.layers[i].prev = self.layers[i-1]
+                self.layers[i].next = self.loss
+
+            # If layer contains an attribute called "weights,"
+            # it's a trainable layer -
+            # add it to the list of trainable layers
+            # We don't need to check for biases -
+            # checking for weights is enough
+            if hasattr(self.layers[i], 'weights'):
+                self.trainable_layers.append(self.layers[i])
+
+    # Train the model
+    def train(self, X, y, *, epochs=1, print_every=1):
+
+        # Main training loop 
+        for epoch in range(1, epochs+1):
+            
+            # Perform forward pass
+            output = self.forward(X)
+            
+            # Temporary
+            print(output)
+            exit()
+          
+
+    # Perform forward pass
+    def forward(self, X):
+        
+        # Call forward method on the input layer
+        # this will set the output property that
+        # the first layer in "prev" object is expecting
+        self.input_layer.forward(X)
+
+        # Call forward method of every object in a chain
+        # Pass output of the previous object as a parameter
+        for layer in self.layers:
+            layer.forward(layer.prev.output)
+
+        # "layer" is now the last object from the list,
+        # return its output
+        return layer.output
