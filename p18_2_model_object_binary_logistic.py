@@ -2,7 +2,7 @@
 # object itself, especially since we will want to do things like save and load this object to use for
 # future prediction tasks.
 
-from mynnfs2 import * # My neural network
+from mynnfs import * # My neural network
 
 from mydatasets import sine_data, spiral_data
 
