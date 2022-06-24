@@ -31,11 +31,11 @@ model.add(Activation_Sigmoid())
 
 # Set loss and optimizer
 model.set(loss=Loss_BinaryCrossentropy(), 
-        optimizer=Optimizer_Adam(learning_rate=0.001,  decay=5e-7),
+        optimizer=Optimizer_Adam(decay=5e-7),
         accuracy=Accuracy_Categorical())
 
 # Finalize the model
 model.finalize()
 
 # Train the model
-model.train(X, y, validation_data=(X_test,y_test), epochs=10000, print_every=100)
+model.train(X, y, validation_data=(X_test, y_test), epochs=10000, print_every=100)
