@@ -255,6 +255,9 @@ class Loss:
         # Calculate mean loss
         data_loss = np.mean(sample_losses) # Gets the mean of all the losses for each sample
         
+        # Add accumulated sum of losses and sample count (for working with batches)
+        self.accumulated_sum += np.sum(sample_losses)
+        self.accumulated_count += len(sample_losses)
         # If just data loss - return it (this is important when working with just validation data)
         if not include_regularization:
             return data_loss
@@ -262,6 +265,23 @@ class Loss:
         # Return the data and regularization loss
         return data_loss, self.regularization_loss()
     
+    # Calculating accumulated loss
+    def calculate_accumulated(self, *, include_regularization=False):
+
+        # Calculate mean loss
+        data_loss = self.accumulated_sum / self.accumulated_count
+
+        # If just data loss - return it (this is important when working with just validation data)
+        if not include_regularization:
+            return data_loss
+
+        # Return the data and regularization loss
+        return data_loss, self.regularization_loss()
+    
+    # Reset varaibles for accumulated loss
+    def new_pass(self):
+        self.accumulated_sum = 0
+        self.accumulated_count = 0
 
 class Loss_CategoricalCrossentropy(Loss): #Inherited from the Loss Class
     # Forward pass

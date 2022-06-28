@@ -1,7 +1,9 @@
-# Lets do the preprocessing to make the data fit to our neural network
+# Lets do the suffling of our data to make it more balanced data
 import numpy as np
 import cv2
 import os
+
+np.random.seed(0) # Same initialization 
 
 # Loads a MNIST dataset
 def load_mnist_dataset(dataset, path):
@@ -44,6 +46,7 @@ def create_data_mnist(path):
 X, y, X_test, y_test = create_data_mnist('fashion_mnist_images')
 
 
+
 # PREPROCESSING
 
 # We will scale the data (not the image) since neural networks
@@ -74,4 +77,19 @@ print(X.shape)
 # Reshape to vectors
 X = X.reshape(X.shape[ 0 ], - 1 )
 X_test = X_test.reshape(X_test.shape[ 0 ], - 1 )
+
+
+# SUFFLING
+
+# When working with batches, it is important to shuffle the data to avoid 
+# biased sequential training. We need to shuffle the data and labels arrays
+# We can not simply shuffle both separately. There are many ways to do this,
+# but what we’ll do is gather all of the “keys,” which are the same for samples 
+# and targets, and then shuffle them.
+
+# Shuffling the data with indexes, to equally shuffle both data and labels
+keys = np.array(range(X.shape[0]))
+np.random.shuffle(keys)
+X = X[keys]
+y = y[keys]
 
