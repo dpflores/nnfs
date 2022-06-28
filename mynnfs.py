@@ -805,9 +805,26 @@ class Accuracy:
         # Calculate an accuracy
         accuracy = np.mean(comparisons)
 
+        # Add accumulated sum of matching values and sample count
+        self.accumulated_sum += np.sum(comparisons)
+        self.accumulated_count += np.sum(len(comparisons))
+
         # Return accuracy
         return accuracy
 
+    # Calculates accumulated accuracy
+    def calculate_accumulated ( self ):
+        # Calculate an accuracy
+        accuracy = self.accumulated_sum / self.accumulated_count
+        # Return the data and regularization losses
+        return accuracy
+
+    # Reset variables for accumulated accuracy
+    def new_pass ( self ):
+        self.accumulated_sum = 0
+        self.accumulated_count = 0
+
+        
 # Accuracy calculation for regresion model
 class Accuracy_Regression(Accuracy):
 
