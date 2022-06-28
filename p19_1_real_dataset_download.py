@@ -1,4 +1,4 @@
-# Lets use a real dataset introduced by nnfs.io
+# Lets use a real dataset introduced by nnfs.io (MNIST Fashion)
 
 import os
 import urllib
