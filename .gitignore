@@ -1,0 +1,9 @@
+# Cache
+__pycache__
+
+# Some extensions
+*.png
+*.zip
+
+# Folders
+fashion_mnist_images/
