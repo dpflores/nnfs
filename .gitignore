@@ -1,5 +1,17 @@
+<<<<<<< HEAD
 __pycache__
 fashion_mnist_images
 .zip
 
 
+=======
+# Cache
+__pycache__
+
+# Some extensions
+*.png
+*.zip
+
+# Folders
+fashion_mnist_images/
+>>>>>>> 4ec842bf778ae45c9756c3c917e3d83128afdf19
